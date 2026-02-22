@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/nurseText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="👩‍⚕️ Nurse: Kim Wexler"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:padding="24dp"
+        android:gravity="center"
+        android:background="#E3F2FD"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <Button
+        android:id="@+id/getPatientBtn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="👤 Get Patient Details"
+        android:layout_margin="16dp"
+        android:padding="20dp"
+        style="@style/Widget.AppCompat.Button.Colored"
+        app:layout_constraintTop_toBottomOf="@+id/nurseText"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <Button
+        android:id="@+id/SendMedicalFormButton"
+        android:layout_width="185dp"
+        android:layout_height="151dp"
+        android:layout_marginTop="32dp"
+        android:padding="40dp"
+        android:text="WRITE"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/getPatientBtn" />
+
+    <Button
+        android:id="@+id/ScanPatientTagButton"
+        android:layout_width="185dp"
+        android:layout_height="151dp"
+        android:layout_marginTop="32dp"
+        android:padding="40dp"
+        android:text="READ"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/SendMedicalFormButton"  />
+</androidx.constraintlayout.widget.ConstraintLayout>
