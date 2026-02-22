@@ -17,12 +17,12 @@ class AuthActivity : AppCompatActivity() {
         manager.saveNurse(Nurse("Nurse Jane Doe"))  // Dummy nurse
 
         findViewById<Button>(R.id.registerBtn).setOnClickListener {
-            Toast.makeText(this, "✅ Nurse details stored in cache!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Nurse details stored in cache!", Toast.LENGTH_SHORT).show()
             goToMain()
         }
 
         findViewById<Button>(R.id.loginBtn).setOnClickListener {
-            Toast.makeText(this, "✅ Logged in from cache!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Logged in from cache!", Toast.LENGTH_SHORT).show()
             goToMain()
         }
     }

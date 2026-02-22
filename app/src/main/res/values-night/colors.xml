@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="colorPrimary">#58B4FF</color> <color name="colorOnPrimary">#0F172A</color>
+
+    <color name="colorBackground">#0F172A</color> <color name="colorSurface">#1E293B</color> <color name="colorTextPrimary">#F8FAFC</color> <color name="colorTextSecondary">#94A3B8</color> <color name="colorSuccess">#34D399</color> <color name="colorOnSuccess">#0F172A</color>
+
+    <color name="colorInputBackground">#334155</color> <color name="colorDivider">#334155</color>
 </resources>
