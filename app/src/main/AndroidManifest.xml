@@ -51,6 +51,14 @@
             android:exported="false"
             android:label="Get Patient Details" />
 
+        <activity
+            android:name=".FetchRecordActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ViewFetchedActivity"
+            android:exported="false" />
+
         <service
             android:name=".MyHostApduService"
             android:exported="true"

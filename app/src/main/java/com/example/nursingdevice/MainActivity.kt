@@ -24,6 +24,17 @@ class MainActivity : AppCompatActivity() {
         val scanPatientTagButton = findViewById<Button>(R.id.ScanPatientTagButton)
         val getPatientBtn = findViewById<Button>(R.id.getPatientBtn)
 
+        val fetchRecordBtn = findViewById<Button>(R.id.fetchRecordBtn)
+        val viewFetchedBtn = findViewById<Button>(R.id.viewFetchedBtn)
+
+        fetchRecordBtn.setOnClickListener {
+            startActivity(Intent(this, FetchRecordActivity::class.java))
+        }
+
+        viewFetchedBtn.setOnClickListener {
+            startActivity(Intent(this, ViewFetchedActivity::class.java))
+        }
+
         // Manage Storage Permissions
         storagePermission = StoragePermission(applicationContext, this)
         storagePermission!!.isStoragePermissionGranted()

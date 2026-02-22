@@ -5,7 +5,7 @@ import android.util.Log
 
 object SessionCache {
     var currentPatientRawData: String? = null
-
+    var fetchedRecordData: String = "No record fetched yet."
     // Parsed Fields
     var currentPatientName: String = "None"
     var currentPatientAge: String = ""
