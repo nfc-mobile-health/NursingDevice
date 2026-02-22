@@ -191,6 +191,7 @@
                     android:layout_marginBottom="12dp">
                     <EditText
                         android:id="@+id/bpInput"
+                        android:inputType="numberDecimal"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="50dp"
@@ -221,7 +222,7 @@
                         android:layout_weight="1"
                         android:layout_height="50dp"
                         android:hint="Heart Rate (bpm)"
-                        android:inputType="number"
+                        android:inputType="numberDecimal"
                         android:textColorHint="@color/colorTextSecondary"
                         android:textColor="@color/colorTextPrimary"
                         android:background="@color/colorInputBackground"
@@ -248,7 +249,7 @@
                         android:layout_weight="1"
                         android:layout_height="50dp"
                         android:hint="Resp. Rate (br/min)"
-                        android:inputType="number"
+                        android:inputType="numberDecimal"
                         android:textColorHint="@color/colorTextSecondary"
                         android:textColor="@color/colorTextPrimary"
                         android:background="@color/colorInputBackground"

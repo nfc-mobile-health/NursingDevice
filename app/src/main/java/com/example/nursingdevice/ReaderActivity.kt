@@ -1,17 +1,16 @@
 package com.example.nursingdevice
+
 import android.content.Intent
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -20,35 +19,35 @@ import java.nio.ByteBuffer
 class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
 
     private var statusTextView: TextView? = null
+    private var logTextView: TextView? = null
     private var receivedDataTextView: TextView? = null
+
     private var scrollView: ScrollView? = null
-    private val APP_DIRECTORY = "NursingDevice"
+    private var logScrollView: ScrollView? = null
+
     private val CHUNK_SIZE = 245
     private val MAX_CHUNK_COUNT = 50000
+
+    private var sessionKey: ByteArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_reader)
 
-        // ✅ Safe findViewById with null checks
         try {
             statusTextView = findViewById(R.id.statusText)
+            logTextView = findViewById(R.id.logText)
             receivedDataTextView = findViewById(R.id.receivedDataText)
             scrollView = findViewById(R.id.scrollView)
+            logScrollView = findViewById(R.id.logScrollView)
 
-            // Verify all views are found
-            if (statusTextView == null) {
-                Log.e("ReaderActivity", "statusText view not found in layout")
-                Toast.makeText(this, "Layout error: statusText not found", Toast.LENGTH_SHORT).show()
-                return
-            }
-            if (receivedDataTextView == null) {
-                Log.e("ReaderActivity", "receivedDataText view not found in layout")
-                Toast.makeText(this, "Layout error: receivedDataText not found", Toast.LENGTH_SHORT).show()
+            if (statusTextView == null || receivedDataTextView == null || logTextView == null) {
+                Toast.makeText(this, "Layout error", Toast.LENGTH_SHORT).show()
                 return
             }
 
-            statusTextView?.text = "📱 Waiting for NFC device..."
+            statusTextView?.text = "Waiting for NFC device..."
+            logTextView?.text = "Ready to scan...\n"
             enableNFC()
 
         } catch (e: Exception) {
@@ -57,8 +56,22 @@ class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
         }
     }
 
+    // Safely append to the dedicated log text view
+    private fun logStep(message: String) {
+        runOnUiThread {
+            val currentText = logTextView?.text.toString()
+            if (currentText.isEmpty()) {
+                logTextView?.text = message
+            } else {
+                logTextView?.text = "$currentText\n$message"
+            }
+            // Auto-scroll the log window to the bottom
+            logScrollView?.post { logScrollView?.fullScroll(ScrollView.FOCUS_DOWN) }
+        }
+    }
+
     private fun enableNFC() {
-        statusTextView?.text = "📱 Waiting for NFC device..."
+        statusTextView?.text = "Waiting for NFC device..."
         NfcAdapter.getDefaultAdapter(this)?.enableReaderMode(
             this, this,
             NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
@@ -68,24 +81,59 @@ class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
 
     override fun onTagDiscovered(tag: Tag?) {
         Log.d("ReaderActivity", "NFC Tag Discovered!")
-        runOnUiThread {
-            statusTextView?.text = "✅ Connected to device"
-            receivedDataTextView?.text = "Receiving file..."
-        }
+
+        runOnUiThread { statusTextView?.text = "Authenticating..." }
+        logStep("Step 1: Tag Discovered. Initiating handshake...")
 
         val isoDep = IsoDep.get(tag) ?: return
         try {
             isoDep.connect()
-            isoDep.timeout = 5000
+            isoDep.timeout = 10000
 
             var response = isoDep.transceive(Utils.SELECT_APD)
             if (!response.isSuccess()) throw IOException("AID selection failed.")
+            logStep("Step 2: App Selected")
+
+            sessionKey = CryptoUtils.generateSessionKey()
+            val encryptedKey = CryptoUtils.rsaEncrypt(sessionKey!!, CryptoUtils.getOtherPublicKey())
+            val signature = CryptoUtils.rsaSign(encryptedKey, CryptoUtils.getMyPrivateKey())
+
+            val sendKeyCmd = Utils.concatArrays(CryptoUtils.CMD_AUTH_SEND_KEY, encryptedKey)
+            var authRes = isoDep.transceive(sendKeyCmd)
+            if (!authRes.isSuccess()) throw IOException("Auth Step 1 (Key Exchange) failed.")
+            logStep("Step 3: Session Key Sent")
+
+            val sendSigCmd = Utils.concatArrays(CryptoUtils.CMD_AUTH_SEND_SIG, signature)
+            authRes = isoDep.transceive(sendSigCmd)
+            if (!authRes.isSuccess()) throw IOException("Auth Step 2 (Signature Validation) failed.")
+            logStep("Step 4: Signature Sent")
+
+            val encryptedAck = authRes.getData()
+            val decryptedAck = CryptoUtils.xorEncryptDecrypt(encryptedAck, sessionKey!!)
+            if (String(decryptedAck, Charsets.UTF_8) != "AUTH_OK") {
+                throw IOException("Authentication rejected by the sender.")
+            }
+
+            runOnUiThread { statusTextView?.text = "Connection Secured" }
+            logStep("Step 5: Secure connection established. Requesting data...")
 
             response = isoDep.transceive(Utils.GET_FILE_INFO_COMMAND)
+            if (response.size <= 2) throw IOException("No metadata received from sender")
             if (!response.isSuccess()) throw IOException("Failed to get metadata.")
 
-            val metadataPayload = response.getData()
+            val encryptedMetadata = response.copyOfRange(0, response.size - 2)
+            if (encryptedMetadata.isEmpty()) {
+                throw IOException("Received empty metadata from sender")
+            }
+
+            val metadataPayload = CryptoUtils.xorEncryptDecrypt(encryptedMetadata, sessionKey!!)
+            if (metadataPayload.isEmpty()) {
+                throw IOException("Decryption failed or empty payload")
+            }
+
             val transferMode = String(metadataPayload.copyOfRange(0, 1), Charsets.UTF_8)
+
+            runOnUiThread { statusTextView?.text = "Transferring Data..." }
 
             when (transferMode) {
                 "T" -> handleTextReception(metadataPayload.copyOfRange(1, metadataPayload.size))
@@ -95,14 +143,15 @@ class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
             }
 
         } catch (e: IOException) {
-            Log.e("ReaderActivity", "❌ Error: ${e.message}", e)
+            Log.e("ReaderActivity", "Error: ${e.message}", e)
+            logStep("Connection Error: ${e.message}")
             runOnUiThread {
-                statusTextView?.text = "❌ Connection Error"
-                receivedDataTextView?.text = e.message ?: "Unknown error"
+                statusTextView?.text = "Connection Failed"
                 Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         } finally {
             try { isoDep.close() } catch (e: IOException) { }
+            sessionKey = null
         }
     }
 
@@ -110,9 +159,7 @@ class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
         val fileSize = ByteBuffer.wrap(fileInfoPayload.copyOfRange(0, 4)).int
         val fileName = String(fileInfoPayload.copyOfRange(4, fileInfoPayload.size), Charsets.UTF_8)
 
-        Log.d("ReaderActivity", "Receiving file: $fileName, Size=$fileSize bytes")
-        runOnUiThread { receivedDataTextView?.text = "📥 Receiving: $fileName\n($fileSize bytes)" }
-
+        logStep("Downloading: $fileName (${String.format("%.2f", fileSize / 1024.0)} KB)")
         val tempFile = File(cacheDir, fileName)
         var receivedBytes = 0
 
@@ -123,42 +170,29 @@ class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
                     val response = isoDep.transceive(Utils.GET_NEXT_DATA_CHUNK_COMMAND)
                     if (!response.isSuccess()) break
 
-                    val chunkData = response.getData()
-                    fos.write(chunkData)
-                    receivedBytes += chunkData.size
+                    val encryptedChunk = response.getData()
+                    val decryptedChunk = CryptoUtils.xorEncryptDecrypt(encryptedChunk, sessionKey!!)
+
+                    fos.write(decryptedChunk)
+                    receivedBytes += decryptedChunk.size
                     chunkCount++
 
                     val progress = (receivedBytes * 100 / fileSize)
-                    runOnUiThread {
-                        statusTextView?.text = "⏳ $receivedBytes / $fileSize bytes ($progress%)"
-                    }
+                    logStep("Transferring: ${String.format("%.2f", receivedBytes / 1024.0)} / ${String.format("%.2f", fileSize / 1024.0)} KB ($progress%)")
                 }
             }
 
-            if (receivedBytes != fileSize) {
-                Log.w("ReaderActivity", "⚠️ File transfer incomplete: $receivedBytes / $fileSize bytes")
-            }
-
             displayFileInView(tempFile)
-            runOnUiThread {
-                statusTextView?.text = "✅ Transfer Complete!"
-                Toast.makeText(this, "✅ File received!", Toast.LENGTH_SHORT).show()
-            }
+            logStep("Transfer Securely Completed.")
+            runOnUiThread { statusTextView?.text = "Transfer Complete" }
 
         } catch (e: Exception) {
-            Log.e("ReaderActivity", "❌ Error: ${e.message}", e)
             tempFile.delete()
-            runOnUiThread {
-                statusTextView?.text = "❌ Error"
-                receivedDataTextView?.text = e.message ?: "Unknown error"
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+            throw e
         }
     }
 
     private fun handleMultiFileReception(isoDep: IsoDep) {
-        Log.d("ReaderActivity", "Starting multi-file reception (streaming mode)...")
-
         val fileName = "aggregated_reports.txt"
         val tempFile = File(cacheDir, fileName)
 
@@ -166,15 +200,11 @@ class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
             val response = isoDep.transceive(Utils.GET_FILE_INFO_COMMAND)
             if (!response.isSuccess()) throw IOException("Failed to get file metadata.")
 
-            val metadataPayload = response.getData()
+            val metadataPayload = CryptoUtils.xorEncryptDecrypt(response.getData(), sessionKey!!)
             val fileSize = ByteBuffer.wrap(metadataPayload.copyOfRange(0, 4)).int
             val receivedFileName = String(metadataPayload.copyOfRange(4, metadataPayload.size), Charsets.UTF_8)
 
-            Log.d("ReaderActivity", "Receiving appended file: $receivedFileName, Size=$fileSize bytes")
-            runOnUiThread {
-                statusTextView?.text = "📥 Receiving: $receivedFileName"
-                receivedDataTextView?.text = "File size: $fileSize bytes\nStreaming to device..."
-            }
+            logStep("Streaming Secure Data: $receivedFileName")
 
             var receivedBytes = 0
             var chunkCount = 0
@@ -184,83 +214,56 @@ class ReaderActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
                     val chunkResponse = isoDep.transceive(Utils.GET_NEXT_DATA_CHUNK_COMMAND)
                     if (!chunkResponse.isSuccess()) break
 
-                    val chunkData = chunkResponse.getData()
-                    fos.write(chunkData)
-                    receivedBytes += chunkData.size
+                    val encryptedChunk = chunkResponse.getData()
+                    val decryptedChunk = CryptoUtils.xorEncryptDecrypt(encryptedChunk, sessionKey!!)
+
+                    fos.write(decryptedChunk)
+                    receivedBytes += decryptedChunk.size
                     chunkCount++
 
                     val progress = (receivedBytes * 100 / fileSize)
-                    runOnUiThread {
-                        statusTextView?.text = "⏳ $receivedBytes / $fileSize bytes ($progress%)"
-                    }
-
-                    if (chunkCount % 100 == 0) {
-                        Log.d("ReaderActivity", "Progress: $receivedBytes / $fileSize bytes")
-                    }
+                    logStep("Transferring: ${String.format("%.2f", receivedBytes / 1024.0)} / ${String.format("%.2f", fileSize / 1024.0)} KB ($progress%)")
                 }
             }
 
-            Log.d("ReaderActivity", "✅ File streaming complete: $receivedBytes bytes")
-
             displayFileInView(tempFile)
-            runOnUiThread {
-                statusTextView?.text = "✅ Transfer Complete!"
-                Toast.makeText(this, "✅ File received and displayed!", Toast.LENGTH_SHORT).show()
-            }
+            logStep("Transfer Securely Completed.")
+            runOnUiThread { statusTextView?.text = "Transfer Complete" }
 
-        } catch (e: OutOfMemoryError) {
-            Log.e("ReaderActivity", "❌ OutOfMemory Error: ${e.message}", e)
-            tempFile.delete()
-            runOnUiThread {
-                statusTextView?.text = "❌ File Too Large"
-                receivedDataTextView?.text = "OutOfMemoryError: File exceeds app memory limit"
-                Toast.makeText(this, "File too large to handle!", Toast.LENGTH_SHORT).show()
-            }
         } catch (e: Exception) {
-            Log.e("ReaderActivity", "❌ Error: ${e.message}", e)
             tempFile.delete()
-            runOnUiThread {
-                statusTextView?.text = "❌ Error"
-                receivedDataTextView?.text = e.message ?: "Unknown error"
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+            throw e
         }
     }
 
     private fun handleTextReception(payload: ByteArray) {
         val receivedString = String(payload, Charsets.UTF_8)
-        Log.d("ReaderActivity", "Received text: $receivedString")
+        logStep("Text received securely")
+
+        SessionCache.processScannedData(receivedString)
+
         runOnUiThread {
-            statusTextView?.text = "✅ Text received!"
             receivedDataTextView?.text = receivedString
-            scrollView?.post {
-                scrollView?.scrollTo(0, 0)
-            }
+            scrollView?.post { scrollView?.scrollTo(0, 0) }
+            statusTextView?.text = "Transfer Complete"
+            Toast.makeText(this, "Patient Data Cached. Press Back to update vitals.", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun displayFileInView(file: File) {
         try {
-            Log.d("ReaderActivity", "Displaying file directly in view: ${file.absolutePath}")
-
             val content = file.readText(Charsets.UTF_8)
+
+            SessionCache.processScannedData(content)
 
             runOnUiThread {
                 receivedDataTextView?.text = content
-                statusTextView?.text = "✅ File content displayed!"
-
-                scrollView?.post {
-                    scrollView?.scrollTo(0, 0)
-                }
+                logStep("Patient Loaded! You may now go back.")
+                scrollView?.post { scrollView?.scrollTo(0, 0) }
+                Toast.makeText(this, "Patient Data Cached. Press Back to update vitals.", Toast.LENGTH_LONG).show()
             }
-
         } catch (e: Exception) {
-            Log.e("ReaderActivity", "❌ Error displaying file: ${e.message}", e)
-            runOnUiThread {
-                statusTextView?.text = "❌ Error displaying file"
-                receivedDataTextView?.text = "Error: ${e.message}"
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+            Log.e("ReaderActivity", "Error displaying file: ${e.message}", e)
         }
     }
 

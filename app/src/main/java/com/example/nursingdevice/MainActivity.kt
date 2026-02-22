@@ -3,30 +3,24 @@ package com.example.nursingdevice
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-// Make sure to copy the connections/StoragePermission.java file over too!
 import com.example.nursingdevice.connections.StoragePermission
+import com.google.android.material.button.MaterialButton
 
 class MainActivity : AppCompatActivity() {
 
     private var storagePermission: StoragePermission? = null
+    private lateinit var sendMedicalFormButton: MaterialButton
+    private lateinit var nurseText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // This links it to your XML layout!
         setContentView(R.layout.activity_main)
 
-        val manager = NursePatientManager(this)
-        val nurse = manager.getNurse()
-
-        val nurseText = findViewById<TextView>(R.id.nurseText)
-        nurseText.text = "👩‍⚕️ Nurse: ${nurse.name}"
-
-        // Renamed these to match our nursing app discussion earlier
-        val sendMedicalFormButton = findViewById<Button>(R.id.SendMedicalFormButton)
+        nurseText = findViewById(R.id.nurseText)
+        sendMedicalFormButton = findViewById(R.id.SendMedicalFormButton)
         val scanPatientTagButton = findViewById<Button>(R.id.ScanPatientTagButton)
         val getPatientBtn = findViewById<Button>(R.id.getPatientBtn)
 
@@ -49,10 +43,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == StoragePermission.REQUEST_CODE_STORAGE_PERMISSION) {
-            storagePermission!!.onActivityResult(requestCode, resultCode, data)
+    override fun onResume() {
+        super.onResume()
+        // Workflow Enforcement: Check if we have a patient loaded in the session
+        if (SessionCache.currentPatientName == "None") {
+            nurseText.text = "Session Active | No Patient Scanned"
+            sendMedicalFormButton.isEnabled = false
+            sendMedicalFormButton.text = "Scan a Patient Tag First"
+            sendMedicalFormButton.alpha = 0.5f // Make it look disabled
+        } else {
+            nurseText.text = "Current Patient: ${SessionCache.currentPatientName}"
+            sendMedicalFormButton.isEnabled = true
+            sendMedicalFormButton.text = "Update Patient Record"
+            sendMedicalFormButton.alpha = 1.0f // Fully visible
         }
     }
 
@@ -64,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == StoragePermission.REQUEST_CODE_STORAGE_PERMISSION) {
             Log.d("Storage permission", "Going for storage permission")
-            storagePermission!!.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            storagePermission!!.onRequestPermissionsResult(requestCode, permissions as Array<String?>, grantResults)
         }
     }
 }
