@@ -46,6 +46,11 @@ class SendForm : AppCompatActivity(), RecognitionListener {
     private lateinit var editButton: Button
     private lateinit var sendNfcButton: Button
 
+    private lateinit var medicationInput: EditText
+    private lateinit var descriptionInput: EditText
+    private lateinit var voiceMedicationBtn: ImageButton
+    private lateinit var voiceDescriptionBtn: ImageButton
+
     private var generatedFile: File? = null
     private var fileContent: String = ""
 
@@ -87,6 +92,11 @@ class SendForm : AppCompatActivity(), RecognitionListener {
         editButton = findViewById(R.id.editButton)
         sendNfcButton = findViewById(R.id.sendNfcButton)
 
+        medicationInput = findViewById(R.id.medicationInput)
+        descriptionInput = findViewById(R.id.descriptionInput)
+        voiceMedicationBtn = findViewById(R.id.voiceMedicationBtn)
+        voiceDescriptionBtn = findViewById(R.id.voiceDescriptionBtn)
+
         checkAudioPermission()
         setupSpeechRecognizer()
         setupSpinners()
@@ -102,6 +112,8 @@ class SendForm : AppCompatActivity(), RecognitionListener {
         voiceEnabledFields.add(heartRateInput)
         voiceEnabledFields.add(respiratoryRateInput)
         voiceEnabledFields.add(temperatureInput)
+        voiceEnabledFields.add(medicationInput)
+        voiceEnabledFields.add(descriptionInput)
 
         startVoiceBtn.setOnClickListener {
             currentFieldIndex = 0
@@ -158,6 +170,8 @@ class SendForm : AppCompatActivity(), RecognitionListener {
             2 -> "Heart Rate"
             3 -> "Respiratory Rate"
             4 -> "Temperature"
+            5 -> "Medication"
+            6 -> "Description"
             else -> "Field"
         }
     }
@@ -174,6 +188,8 @@ class SendForm : AppCompatActivity(), RecognitionListener {
         voiceHeartRateBtn.setOnClickListener { startVoiceInputAtIndex(2) }
         voiceRespRateBtn.setOnClickListener { startVoiceInputAtIndex(3) }
         voiceTempBtn.setOnClickListener { startVoiceInputAtIndex(4) }
+        voiceMedicationBtn.setOnClickListener { startVoiceInputAtIndex(5) }
+        voiceDescriptionBtn.setOnClickListener { startVoiceInputAtIndex(6) }
     }
 
     private fun startVoiceInputAtIndex(index: Int) {
@@ -246,6 +262,8 @@ class SendForm : AppCompatActivity(), RecognitionListener {
         val heartRate = heartRateInput.text.toString().trim()
         val respiratoryRate = respiratoryRateInput.text.toString().trim()
         val temperature = temperatureInput.text.toString().trim()
+        val medication = medicationInput.text.toString().trim()
+        val description = descriptionInput.text.toString().trim()
 
         val content = StringBuilder()
         content.append("MEDICAL UPDATE RECORD\n==================\n\n")
@@ -255,6 +273,8 @@ class SendForm : AppCompatActivity(), RecognitionListener {
         if (heartRate.isNotEmpty()) content.append("Heart Rate: $heartRate bpm\n")
         if (respiratoryRate.isNotEmpty()) content.append("Respiratory Rate: $respiratoryRate breaths/min\n")
         if (temperature.isNotEmpty()) content.append("Body Temperature: ${temperature}F\n")
+        if (medication.isNotEmpty()) content.append("Medication: $medication\n")
+        if (description.isNotEmpty()) content.append("Description: $description\n")
         content.append("\n==================\n")
         content.append("Updated on: ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}\n")
 
