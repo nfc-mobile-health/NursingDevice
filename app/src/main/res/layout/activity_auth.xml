@@ -6,64 +6,135 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/colorBackground"
-        android:fillViewport="true">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="32dp">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nurse Authentication"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:layout_gravity="center"
+            android:layout_marginBottom="32dp"/>
+
+        <!-- Nurse ID field — always visible -->
+        <EditText
+            android:id="@+id/nurseIdInput"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="Nurse ID (e.g. NURSE_001)"
+            android:inputType="text"
+            android:textSize="15sp"
+            android:layout_marginBottom="16dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"/>
+
+        <!-- Login button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/loginBtn"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Login"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:backgroundTint="@color/colorPrimary"
+            android:textColor="@color/colorTextPrimary"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Toggle link -->
+        <TextView
+            android:id="@+id/toggleLink"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="New nurse? Register here"
+            android:textColor="@color/colorPrimary"
+            android:textSize="14sp"
+            android:layout_gravity="center"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Registration fields — initially hidden -->
         <LinearLayout
+            android:id="@+id/registerSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
             android:orientation="vertical"
-            android:padding="32dp">
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/nurseNameInput"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="Full Name"
+                android:inputType="textPersonName"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"/>
+
+            <EditText
+                android:id="@+id/nurseAgeInput"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="Age"
+                android:inputType="number"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"/>
+
+            <EditText
+                android:id="@+id/nurseGenderInput"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="Gender"
+                android:inputType="text"
+                android:textSize="15sp"
+                android:layout_marginBottom="12dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="40dp"
-                android:text="Nurse Authentication"
+                android:text="Point of Care"
+                android:textSize="13sp"
                 android:textColor="@color/colorTextPrimary"
-                android:textSize="26sp"
-                android:textStyle="bold" />
+                android:layout_marginBottom="4dp"/>
+
+            <Spinner
+                android:id="@+id/pocSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginBottom="12dp"/>
+
+            <EditText
+                android:id="@+id/nurseContactInput"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:hint="Contact Number (optional)"
+                android:inputType="phone"
+                android:textSize="15sp"
+                android:layout_marginBottom="16dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/registerBtn"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:layout_marginBottom="16dp"
+                android:layout_height="56dp"
                 android:text="Register Nurse"
-                android:textColor="@color/colorTextPrimary"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                app:backgroundTint="@color/colorPrimary"
-                app:cornerRadius="12dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/loginBtn"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Login Securely"
-                android:textColor="@color/colorPrimary"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                app:backgroundTint="@color/colorSurface"
                 app:cornerRadius="12dp"
-                app:strokeColor="@color/colorPrimary"
-                app:strokeWidth="2dp" />
+                app:backgroundTint="@color/colorPrimary"
+                android:textColor="@color/colorTextPrimary"
+                android:layout_marginBottom="8dp"/>
 
         </LinearLayout>
-    </ScrollView>
 
-    <!-- Floating Home Button - bottom right -->
-<!--    <ImageButton-->
-<!--        android:id="@+id/homeBtn"-->
-<!--        android:layout_width="56dp"-->
-<!--        android:layout_height="56dp"-->
-<!--        android:layout_gravity="bottom|end"-->
-<!--        android:layout_margin="24dp"-->
-<!--        android:src="@android:drawable/ic_menu_revert"-->
-<!--        android:background="@color/colorPrimary"-->
-<!--        android:contentDescription="Go to Home"-->
-<!--        android:padding="12dp" />-->
-
-</FrameLayout>
+    </LinearLayout>
+</ScrollView>
